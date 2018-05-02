@@ -1,52 +1,88 @@
 import bpy
 import bmesh
 import math
+from math import pi, sin, cos
+from numpy import linspace
 
-#delete all existing meshes
-# select objects by type
-for o in bpy.data.objects:
-    if o.type == 'MESH':
-        o.select = True
-    else:
-        o.select = False
+pointsInSlice = 30 #number of vertices in a given slice
+modelHeight = 1 #space between slices
+numSlices = 2 #total height of object in slices
 
-# call the operator once
-bpy.ops.object.delete()
+def deletMeshes():
+  #delete all existing meshes
+  # select objects by type
+  for o in bpy.data.objects:
+      if o.type == 'MESH':
+          o.select = True
+      else:
+          o.select = False
 
-#create a list of vertices
-verts = \
-    [
-        (0, -1 / math.sqrt(3),0),
-        (0.5, 1 / (2 * math.sqrt(3)), 0),
-        (-0.5, 1 / (2 * math.sqrt(3)), 0),
-        (0, 0, math.sqrt(2 / 3)),
-    ]  # 2 verts made with XYZ coords
+  # call the operator once
+  bpy.ops.object.delete()
 
-#create list of faces
-faces = [[0, 1, 2], [0, 1, 3], [1, 2, 3], [2, 0, 3]]
+def createVerts():
+  #create a list of vertices
+  verts = []
+  currentSlice = 0
 
-mesh = bpy.data.meshes.new("mesh")  # add a new mesh
-obj = bpy.data.objects.new("MyObject", mesh)  # add a new object using the mesh
+  #create a circle
+  for z in linspace(0,modelHeight, numSlices):
+    for theta in linspace(0,2*pi,pointsInSlice):
+      verts.append([sin(theta),cos(theta),z])
 
-scene = bpy.context.scene
-scene.objects.link(obj)  # put the object into the scene (link)
-scene.objects.active = obj  # set as the active object in the scene
-obj.select = True  # select object
 
-#make new mesh
-mesh = bpy.context.object.data
-bm = bmesh.new()
+  return verts
 
-#add vertices and faces
-for v in verts:
-    bm.verts.new(v)  # add a new vert
-    
-bm.verts.ensure_lookup_table()
+def createFaces():
+  #create list of faces
+  faces = [];
 
-for f in faces:
-    newface = set(bm.verts[i] for i in f)
-    bm.faces.new(newface)
+  #the cylender defines a 2 dimensional manifold linked on 2 edges
+  #the heights are zero indexed (hence numSlices - 1)
+  #the faces are added "above" the current slice, as well as "bellow" the next slice
+  #hence (numSlices -1) - 1
+  for h in linspace(0,numSlices-2,numSlices-1): #iterate over height slices.
+    for r in range(0,pointsInSlice-1): #iterate over each point in slice
+      if(r == pointsInSlice-1):
+        #handle linking ends of manifold together
+        faces.append([r,r+pointsInSlice,pointsInSlice*h])
+        faces.append([r+pointsInSlice,pointsInSlice*h,pointsInSlice*(h+1)])
+      else:
+        #handle rest of manifold
+        faces.append([r,r+pointsInSlice,r+1])
+        faces.append([r+pointsInSlice,r+1,r+1+pointsInSlice])
 
-# make the bmesh the object's mesh
-bm.to_mesh(mesh)  
-bm.free()  # always do this when finished
+  return faces
+
+def createMesh(verts,faces):
+  mesh = bpy.data.meshes.new("mesh")  # add a new mesh
+  obj = bpy.data.objects.new("MyObject", mesh)  # add a new object using the mesh
+
+  scene = bpy.context.scene
+  scene.objects.link(obj)  # put the object into the scene (link)
+  scene.objects.active = obj  # set as the active object in the scene
+  obj.select = True  # select object
+
+  #make new mesh
+  mesh = bpy.context.object.data
+  bm = bmesh.new()
+
+  #add vertices and faces
+  for v in verts:
+      bm.verts.new(v)  # add a new vert
+      
+  bm.verts.ensure_lookup_table()
+
+  for f in faces:
+      newface = set(bm.verts[i] for i in f)
+      bm.faces.new(newface)
+
+  # make the bmesh the object's mesh
+  bm.to_mesh(mesh)  
+  bm.free()  # always do this when finished
+
+deletMeshes()
+verts = createVerts()
+faces = createFaces()
+print(faces)
+createMesh(verts,faces)
