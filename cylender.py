@@ -4,9 +4,9 @@ import math
 from math import pi, sin, cos
 from numpy import linspace
 
-pointsInSlice = 3 #number of vertices in a given slice
+pointsInSlice = 30 #number of vertices in a given slice
 modelHeight = 1 #space between slices
-numSlices = 2 #total height of object in slices
+numSlices = 10 #total height of object in slices
 
 def deletMeshes():
   #delete all existing meshes
@@ -40,19 +40,34 @@ def populateCylinder(faces):
   #the heights are zero indexed (hence numSlices - 1)
   #the faces are added "above" the current slice, as well as "bellow" the next slice
   #hence (numSlices -1) - 1
+  n = pointsInSlice
   for h in linspace(0,numSlices-2,numSlices-1): #iterate over height slices.
-    for r in range(0,pointsInSlice): #iterate over each point in slice
-      if(r == pointsInSlice-1):
+    for r in range(0,n): #iterate over each point in slice
+      if(r == n-1):
         #handle linking ends of manifold together
-        faces.append([r,r+pointsInSlice,int(pointsInSlice*h)])
-        faces.append([r+pointsInSlice,int(pointsInSlice*h),int(pointsInSlice*(h+1))])
+        faces.append(
+          [int(r+(h*n)),
+          int(n*(h)),
+          int(r+(h*n)+n)
+          ])
+        faces.append(
+          [int(r+(h+1)*n),
+          int(n*h),
+          int(n*(h+1))
+          ])
       else:
         #handle rest of manifold
-        faces.append([r,r+pointsInSlice,r+1])
-        faces.append([r+pointsInSlice,r+1,r+1+pointsInSlice])
+        faces.append(
+          [int(r+(h*n)),
+          int(r+(h*n)+1),
+          int(r+(h*n)+n)])
+        faces.append(
+          [int(r+(h*n)+n),
+          int(r+(h*n)+1),
+          int(r+(h*n)+1+n)
+          ])
 
-    print("faces at " + str(h))
-    print(faces)
+
 
   return faces
 
@@ -85,11 +100,14 @@ def createMesh(verts,faces):
 
 deletMeshes()
 verts = createCylinderVerts()
+print("verts")
+for v in verts:
+  print(v)
 faces = []
 faces = populateCylinder(faces)
 
-print("points")
-print(verts)
+
 print("faces")
-print(faces)
+for f in faces:
+  print(f)
 createMesh(verts,faces)
